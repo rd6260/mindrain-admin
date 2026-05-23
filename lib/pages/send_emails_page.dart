@@ -4,16 +4,16 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:mindrain_admin/services/postmark.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:mindrain_admin/secret.dart';
 
-class EmailManagementPage extends StatefulWidget {
-  const EmailManagementPage({super.key});
+class SendEmailsPage extends StatefulWidget {
+  const SendEmailsPage({super.key});
 
   @override
-  State<EmailManagementPage> createState() => _EmailManagementPageState();
+  State<SendEmailsPage> createState() => _SendEmailsPageState();
 }
 
-class _EmailManagementPageState extends State<EmailManagementPage> {
+class _SendEmailsPageState extends State<SendEmailsPage> {
   // ── CSV state ────────────────────────────────────────────────────────────
   List<String> _testHeaders = [], _finalHeaders = [];
   List<Map<String, String>> _testRows = [], _finalRows = [];
@@ -21,7 +21,7 @@ class _EmailManagementPageState extends State<EmailManagementPage> {
   String? _csvWarning;
 
   // ── Attachments ──────────────────────────────────────────────────────────
-  List<PlatformFile> _attachments = [];
+  final List<PlatformFile> _attachments = [];
 
   // ── Composer ─────────────────────────────────────────────────────────────
   final _subjectCtrl = TextEditingController();
@@ -314,8 +314,7 @@ class _EmailManagementPageState extends State<EmailManagementPage> {
   }) async {
     if (_emailCol == null) return;
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('postmark_token') ?? '';
+    final token = POSTMARK_API_KEY;
 
     if (token.isEmpty) {
       if (mounted) {
@@ -1406,7 +1405,7 @@ class _AutocompleteItemState extends State<_AutocompleteItem> {
 // ── Progress dialog ───────────────────────────────────────────────────────────
 class _ProgressDialog extends StatelessWidget {
   const _ProgressDialog({required this.state, required this.onCancel});
-  final _EmailManagementPageState state;
+  final _SendEmailsPageState state;
   final VoidCallback onCancel;
 
   static const _accent = Color(0xFF6366F1);
@@ -1416,7 +1415,7 @@ class _ProgressDialog extends StatelessWidget {
     // ── FIX: read ALL live values inside ListenableBuilder, not before it ──
     return ListenableBuilder(
       listenable: state._progressNotifier,
-      builder: (_, __) {
+      builder: (_, _) {
         final total = state._total;
         final sent = state._sent;
         final ok = state._ok;
