@@ -318,7 +318,7 @@ class _EmailTableState extends State<_EmailTable> {
               physics: const NeverScrollableScrollPhysics(),
               itemCount: widget.rows.length,
               separatorBuilder: (_, __) =>
-                  Divider(height: 1, color: colorScheme.outlineVariant.withOpacity(0.5)),
+                  Divider(height: 1, color: colorScheme.outlineVariant.withValues(alpha: 0.5)),
               itemBuilder: (context, i) {
                 final row = widget.rows[i];
                 return _TableRow(
@@ -378,7 +378,7 @@ class _TableRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       color: isHeader
-          ? colorScheme.surfaceContainerHighest.withOpacity(0.5)
+          ? colorScheme.surfaceContainerHighest.withValues(alpha: 0.5)
           : null,
       padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 0),
       child: Row(
@@ -429,8 +429,8 @@ class _StatusChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: paid
-            ? Colors.green.withOpacity(0.12)
-            : colorScheme.errorContainer.withOpacity(0.5),
+            ? Colors.green.withValues(alpha: 0.12)
+            : colorScheme.errorContainer.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(

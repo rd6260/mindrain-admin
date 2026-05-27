@@ -171,7 +171,7 @@ class _Header extends StatelessWidget {
           decoration: BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: colors.outlineVariant.withOpacity(0.5),
+                color: colors.outlineVariant.withValues(alpha: 0.5),
               ),
             ),
           ),
@@ -255,14 +255,14 @@ class _OptionCardState extends State<_OptionCard> {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: _hovered
-                  ? opt.accentColor.withOpacity(0.5)
-                  : colors.outlineVariant.withOpacity(0.35),
+                  ? opt.accentColor.withValues(alpha: 0.5)
+                  : colors.outlineVariant.withValues(alpha: 0.35),
               width: 1.5,
             ),
             boxShadow: _hovered
                 ? [
                     BoxShadow(
-                      color: opt.accentColor.withOpacity(0.08),
+                      color: opt.accentColor.withValues(alpha: 0.08),
                       blurRadius: 20,
                       offset: const Offset(0, 4),
                     )
@@ -279,7 +279,7 @@ class _OptionCardState extends State<_OptionCard> {
                   width: 52,
                   height: 52,
                   decoration: BoxDecoration(
-                    color: opt.accentColor.withOpacity(_hovered ? 0.18 : 0.10),
+                    color: opt.accentColor.withValues(alpha: _hovered ? 0.18 : 0.10),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(opt.icon, color: opt.accentColor, size: 26),
@@ -352,9 +352,9 @@ class _Badge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
       child: Text(
         label,

@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mindrain_admin/pages/brief_collected_emails_page.dart';
+import 'package:mindrain_admin/pages/referral_account_management_page.dart';
 import 'package:mindrain_admin/pages/send_emails_page.dart';
-import 'package:mindrain_admin/pages/settings.dart';
 import 'package:mindrain_admin/pages/signed_up_users_page.dart';
+import 'package:mindrain_admin/pages/wallet_management_page.dart';
 
 // ─── Navigation Model ─────────────────────────────────────────────────────────
 
@@ -71,6 +72,28 @@ const List<NavItem> navItems = [
         label: 'Signed Up Users',
         icon: Icons.receipt_long_rounded,
         page: SignedUpUsersPage(),
+      ),
+    ],
+  ),
+  NavItem(
+    label: 'Wallet',
+    icon: Icons.wallet_outlined,
+    activeIcon: Icons.wallet_rounded,
+    page: _PlaceholderPage(
+      title: 'Wallet',
+      icon: Icons.wallet_rounded,
+      color: Color(0xFF6366F1),
+    ),
+    children: [
+      NavSubItem(
+        label: 'Amount Management',
+        icon: Icons.payments,
+        page: WalletManagementPage(),
+      ),
+      NavSubItem(
+        label: 'Accounts',
+        icon: Icons.manage_accounts,
+        page: ReferralAccountManagementPage(),
       ),
     ],
   ),

@@ -6,7 +6,6 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 
 Future<List<dynamic>> fetchAuthUsers() async {
-
   final response = await http.get(
     Uri.parse('$SUPABASE_URL/auth/v1/admin/users?page=1&per_page=1000'),
     headers: {
@@ -33,6 +32,7 @@ class _UserRow {
   final String name;
   final String email;
   final bool emailVerified;
+  final DateTime? createdAt;
   final List<_EventRegistration> registrations;
 
   const _UserRow({
@@ -40,6 +40,7 @@ class _UserRow {
     required this.name,
     required this.email,
     required this.emailVerified,
+    this.createdAt,
     required this.registrations,
   });
 
@@ -111,10 +112,13 @@ class _SignedUpUsersPageState extends State<SignedUpUsersPage> {
       // Build lookup maps
       final Map<String, String> emailById = {};
       final Map<String, bool> verifiedById = {};
+      final Map<String, DateTime?> createdAtById = {};
       for (final u in (authUsersRes)) {
         final id = u['id'] as String;
         emailById[id] = u['email'] as String? ?? '';
         verifiedById[id] = u['email_confirmed_at'] != null;
+        final raw = u['created_at'] as String?;
+        createdAtById[id] = raw != null ? DateTime.tryParse(raw) : null;
       }
 
       // 2. Fetch registrations (no email column — keyed by registration_by user id)
@@ -152,6 +156,7 @@ class _SignedUpUsersPageState extends State<SignedUpUsersPage> {
           name: u['name'] as String,
           email: emailById[id] ?? '—',
           emailVerified: verifiedById[id] ?? false,
+          createdAt: createdAtById[id],
           registrations: regsByUser[id] ?? [],
         );
       }).toList();
@@ -375,6 +380,10 @@ class _SignedUpUsersPageState extends State<SignedUpUsersPage> {
   }
 }
 
+// ── Sort state ────────────────────────────────────────────────────────────────
+
+enum _SortColumn { name, createdAt }
+
 // ── Table ─────────────────────────────────────────────────────────────────────
 
 class _UsersTable extends StatefulWidget {
@@ -389,12 +398,45 @@ class _UsersTableState extends State<_UsersTable> {
   final _scrollV = ScrollController();
   final _scrollH = ScrollController();
 
+  _SortColumn _sortColumn = _SortColumn.name;
+  bool _sortAscending = true;
+
   // Column widths
-  static const double _wIndex = 48;
-  static const double _wName = 180;
-  static const double _wEmail = 260;
+  static const double _wIndex    = 48;
+  static const double _wName     = 180;
+  static const double _wEmail    = 260;
   static const double _wVerified = 110;
-  static const double _wEvents = 420; // flexible, chips wrap inside
+  static const double _wCreated  = 140;   // ← NEW
+  static const double _wEvents   = 420;
+
+  List<_UserRow> get _sorted {
+    final list = List<_UserRow>.from(widget.rows);
+    list.sort((a, b) {
+      int cmp;
+      if (_sortColumn == _SortColumn.name) {
+        cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
+      } else {
+        // nulls last
+        if (a.createdAt == null && b.createdAt == null) cmp = 0;
+        else if (a.createdAt == null) cmp = 1;
+        else if (b.createdAt == null) cmp = -1;
+        else cmp = a.createdAt!.compareTo(b.createdAt!);
+      }
+      return _sortAscending ? cmp : -cmp;
+    });
+    return list;
+  }
+
+  void _onHeaderTap(_SortColumn col) {
+    setState(() {
+      if (_sortColumn == col) {
+        _sortAscending = !_sortAscending;
+      } else {
+        _sortColumn = col;
+        _sortAscending = true;
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -407,6 +449,7 @@ class _UsersTableState extends State<_UsersTable> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
+    final sorted = _sorted;
 
     return Scrollbar(
       controller: _scrollH,
@@ -416,11 +459,17 @@ class _UsersTableState extends State<_UsersTable> {
         controller: _scrollH,
         scrollDirection: Axis.horizontal,
         child: SizedBox(
-          width: _wIndex + _wName + _wEmail + _wVerified + _wEvents,
+          width: _wIndex + _wName + _wEmail + _wVerified + _wCreated + _wEvents,
           child: Column(
             children: [
               // Header
-              _HeaderRow(cs: cs, theme: theme),
+              _HeaderRow(
+                cs: cs,
+                theme: theme,
+                sortColumn: _sortColumn,
+                sortAscending: _sortAscending,
+                onTap: _onHeaderTap,
+              ),
               Divider(height: 1, color: cs.outlineVariant),
               // Data
               Expanded(
@@ -429,13 +478,13 @@ class _UsersTableState extends State<_UsersTable> {
                   thumbVisibility: true,
                   child: ListView.separated(
                     controller: _scrollV,
-                    itemCount: widget.rows.length,
+                    itemCount: sorted.length,
                     separatorBuilder: (_, __) => Divider(
                       height: 1,
-                      color: cs.outlineVariant.withOpacity(0.5),
+                      color: cs.outlineVariant.withValues(alpha: 0.5),
                     ),
                     itemBuilder: (context, i) =>
-                        _UserRowWidget(index: i + 1, row: widget.rows[i]),
+                        _UserRowWidget(index: i + 1, row: sorted[i]),
                   ),
                 ),
               ),
@@ -447,51 +496,109 @@ class _UsersTableState extends State<_UsersTable> {
   }
 }
 
+// ── Header row ────────────────────────────────────────────────────────────────
+
 class _HeaderRow extends StatelessWidget {
   final ColorScheme cs;
   final ThemeData theme;
-  const _HeaderRow({required this.cs, required this.theme});
+  final _SortColumn sortColumn;
+  final bool sortAscending;
+  final void Function(_SortColumn) onTap;
 
-  static const _labels = ['#', 'Name', 'Email', 'Verified', 'Registrations'];
-  static const _widths = [
-    _UsersTableState._wIndex,
-    _UsersTableState._wName,
-    _UsersTableState._wEmail,
-    _UsersTableState._wVerified,
-    _UsersTableState._wEvents,
-  ];
+  const _HeaderRow({
+    required this.cs,
+    required this.theme,
+    required this.sortColumn,
+    required this.sortAscending,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: cs.surfaceContainerHighest.withOpacity(0.5),
+      color: cs.surfaceContainerHighest.withValues(alpha: 0.5),
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
-        children: List.generate(_labels.length, (i) {
-          return SizedBox(
-            width: _widths[i],
-            child: Padding(
-              padding: EdgeInsets.only(left: i == 0 ? 12 : 16, right: 8),
-              child: Text(
-                _labels[i],
+        children: [
+          _cell('#',         _UsersTableState._wIndex,    null,               isFirst: true),
+          _cell('Name',      _UsersTableState._wName,     _SortColumn.name),
+          _cell('Email',     _UsersTableState._wEmail,    null),
+          _cell('Verified',  _UsersTableState._wVerified, null),
+          _cell('Created',   _UsersTableState._wCreated,  _SortColumn.createdAt),
+          _cell('Registrations', _UsersTableState._wEvents, null),
+        ],
+      ),
+    );
+  }
+
+  Widget _cell(
+    String label,
+    double width,
+    _SortColumn? col, {
+    bool isFirst = false,
+  }) {
+    final active = col != null && sortColumn == col;
+    return SizedBox(
+      width: width,
+      child: Padding(
+        padding: EdgeInsets.only(left: isFirst ? 12 : 16, right: 8),
+        child: col != null
+            ? InkWell(
+                onTap: () => onTap(col),
+                borderRadius: BorderRadius.circular(4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      label,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: active ? cs.primary : cs.onSurfaceVariant,
+                        fontWeight: FontWeight.w600,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    const SizedBox(width: 3),
+                    Icon(
+                      active
+                          ? (sortAscending
+                              ? Icons.arrow_upward_rounded
+                              : Icons.arrow_downward_rounded)
+                          : Icons.unfold_more_rounded,
+                      size: 13,
+                      color: active ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.5),
+                    ),
+                  ],
+                ),
+              )
+            : Text(
+                label,
                 style: theme.textTheme.labelSmall?.copyWith(
                   color: cs.onSurfaceVariant,
                   fontWeight: FontWeight.w600,
                   letterSpacing: 0.8,
                 ),
               ),
-            ),
-          );
-        }),
       ),
     );
   }
 }
 
+// ── Row widget ────────────────────────────────────────────────────────────────
+
 class _UserRowWidget extends StatelessWidget {
   final int index;
   final _UserRow row;
   const _UserRowWidget({required this.index, required this.row});
+
+  String _formatDate(DateTime? dt) {
+    if (dt == null) return '—';
+    // e.g. "12 Jan 2024"
+    const months = [
+      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${dt.day} ${months[dt.month]} ${dt.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -508,12 +615,9 @@ class _UserRowWidget extends StatelessWidget {
             width: _UsersTableState._wIndex,
             child: Padding(
               padding: const EdgeInsets.only(left: 12, right: 8),
-              child: Text(
-                '$index',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: cs.onSurfaceVariant,
-                ),
-              ),
+              child: Text('$index',
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(color: cs.onSurfaceVariant)),
             ),
           ),
           // Name
@@ -521,13 +625,10 @@ class _UserRowWidget extends StatelessWidget {
             width: _UsersTableState._wName,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 8),
-              child: Text(
-                row.name,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(row.name,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis),
             ),
           ),
           // Email
@@ -535,14 +636,10 @@ class _UserRowWidget extends StatelessWidget {
             width: _UsersTableState._wEmail,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 8),
-              child: Text(
-                row.email,
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontFamily: 'monospace',
-                  fontSize: 12.5,
-                ),
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(row.email,
+                  style: theme.textTheme.bodySmall
+                      ?.copyWith(fontFamily: 'monospace', fontSize: 12.5),
+                  overflow: TextOverflow.ellipsis),
             ),
           ),
           // Email verified
@@ -553,18 +650,29 @@ class _UserRowWidget extends StatelessWidget {
               child: _VerifiedChip(verified: row.emailVerified, cs: cs),
             ),
           ),
+          // Created at                                                  ← NEW
+          SizedBox(
+            width: _UsersTableState._wCreated,
+            child: Padding(
+              padding: const EdgeInsets.only(left: 16, right: 8),
+              child: Text(
+                _formatDate(row.createdAt),
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: row.createdAt != null ? null : cs.onSurfaceVariant,
+                  fontSize: 12.5,
+                ),
+              ),
+            ),
+          ),
           // Registrations
           SizedBox(
             width: _UsersTableState._wEvents,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 16),
               child: row.registrations.isEmpty
-                  ? Text(
-                      'No registrations',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: cs.onSurfaceVariant,
-                      ),
-                    )
+                  ? Text('No registrations',
+                      style: theme.textTheme.bodySmall
+                          ?.copyWith(color: cs.onSurfaceVariant))
                   : Wrap(
                       spacing: 6,
                       runSpacing: 6,
@@ -623,13 +731,13 @@ class _EventChip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: paid
-            ? Colors.green.withOpacity(0.10)
-            : cs.errorContainer.withOpacity(0.45),
+            ? Colors.green.withValues(alpha: 0.10)
+            : cs.errorContainer.withValues(alpha: 0.45),
         borderRadius: BorderRadius.circular(4),
         border: Border.all(
           color: paid
-              ? Colors.green.withOpacity(0.25)
-              : cs.error.withOpacity(0.25),
+              ? Colors.green.withValues(alpha: 0.25)
+              : cs.error.withValues(alpha: 0.25),
           width: 0.8,
         ),
       ),
@@ -652,8 +760,8 @@ class _EventChip extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
             decoration: BoxDecoration(
               color: paid
-                  ? Colors.green.withOpacity(0.18)
-                  : cs.error.withOpacity(0.12),
+                  ? Colors.green.withValues(alpha: 0.18)
+                  : cs.error.withValues(alpha: 0.12),
               borderRadius: BorderRadius.circular(3),
             ),
             child: Text(
