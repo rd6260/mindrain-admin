@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:mindrain_admin/pages/brief_collected_emails_page.dart';
 import 'package:mindrain_admin/pages/referral_account_management_page.dart';
+import 'package:mindrain_admin/pages/registrations_list_page.dart';
 import 'package:mindrain_admin/pages/send_emails_page.dart';
 import 'package:mindrain_admin/pages/signed_up_users_page.dart';
 import 'package:mindrain_admin/pages/wallet_management_page.dart';
@@ -98,16 +99,6 @@ const List<NavItem> navItems = [
     ],
   ),
   NavItem(
-    label: 'Profile',
-    icon: Icons.person_outline_rounded,
-    activeIcon: Icons.person_rounded,
-    page: _PlaceholderPage(
-      title: 'Profile',
-      icon: Icons.person_rounded,
-      color: Color(0xFF10B981),
-    ),
-  ),
-  NavItem(
     label: 'Registrations',
     icon: Icons.app_registration_outlined,
     activeIcon: Icons.app_registration_rounded,
@@ -115,6 +106,19 @@ const List<NavItem> navItems = [
       title: 'Registrations',
       icon: Icons.app_registration_rounded,
       color: Color(0xFFF59E0B),
+    ),
+    children: [
+      NavSubItem(label: 'List', icon: Icons.list_outlined, page: RegistrationsPage()),
+    ],
+  ),
+  NavItem(
+    label: 'Profile',
+    icon: Icons.person_outline_rounded,
+    activeIcon: Icons.person_rounded,
+    page: _PlaceholderPage(
+      title: 'Profile',
+      icon: Icons.person_rounded,
+      color: Color(0xFF10B981),
     ),
   ),
   NavItem(
