@@ -42,6 +42,11 @@ dependencies:
   shared_preferences: ^2.3.2
   supabase_flutter: ^2.12.4
 
+  # State management
+  flutter_bloc: ^9.1.1
+  equatable: ^2.0.5
+  url_launcher: ^6.3.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -145,8 +145,12 @@ class _SignedUpUsersPageState extends State<SignedUpUsersPage> {
         );
       }
 
-      for (final r in (reg1Res as List)) addReg(r);
-      for (final r in (reg2Res as List)) addReg(r);
+      for (final r in (reg1Res as List)) {
+        addReg(r);
+      }
+      for (final r in (reg2Res as List)) {
+        addReg(r);
+      }
 
       // 4. Assemble rows
       final rows = (userInfoRes as List).map<_UserRow>((u) {
@@ -402,12 +406,12 @@ class _UsersTableState extends State<_UsersTable> {
   bool _sortAscending = true;
 
   // Column widths
-  static const double _wIndex    = 48;
-  static const double _wName     = 180;
-  static const double _wEmail    = 260;
+  static const double _wIndex = 48;
+  static const double _wName = 180;
+  static const double _wEmail = 260;
   static const double _wVerified = 110;
-  static const double _wCreated  = 140;   // ← NEW
-  static const double _wEvents   = 420;
+  static const double _wCreated = 140; // ← NEW
+  static const double _wEvents = 420;
 
   List<_UserRow> get _sorted {
     final list = List<_UserRow>.from(widget.rows);
@@ -417,10 +421,15 @@ class _UsersTableState extends State<_UsersTable> {
         cmp = a.name.toLowerCase().compareTo(b.name.toLowerCase());
       } else {
         // nulls last
-        if (a.createdAt == null && b.createdAt == null) cmp = 0;
-        else if (a.createdAt == null) cmp = 1;
-        else if (b.createdAt == null) cmp = -1;
-        else cmp = a.createdAt!.compareTo(b.createdAt!);
+        if (a.createdAt == null && b.createdAt == null) {
+          cmp = 0;
+        } else if (a.createdAt == null) {
+          cmp = 1;
+        } else if (b.createdAt == null) {
+          cmp = -1;
+        } else {
+          cmp = a.createdAt!.compareTo(b.createdAt!);
+        }
       }
       return _sortAscending ? cmp : -cmp;
     });
@@ -479,7 +488,7 @@ class _UsersTableState extends State<_UsersTable> {
                   child: ListView.separated(
                     controller: _scrollV,
                     itemCount: sorted.length,
-                    separatorBuilder: (_, __) => Divider(
+                    separatorBuilder: (_, _) => Divider(
                       height: 1,
                       color: cs.outlineVariant.withValues(alpha: 0.5),
                     ),
@@ -520,11 +529,11 @@ class _HeaderRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 10),
       child: Row(
         children: [
-          _cell('#',         _UsersTableState._wIndex,    null,               isFirst: true),
-          _cell('Name',      _UsersTableState._wName,     _SortColumn.name),
-          _cell('Email',     _UsersTableState._wEmail,    null),
-          _cell('Verified',  _UsersTableState._wVerified, null),
-          _cell('Created',   _UsersTableState._wCreated,  _SortColumn.createdAt),
+          _cell('#', _UsersTableState._wIndex, null, isFirst: true),
+          _cell('Name', _UsersTableState._wName, _SortColumn.name),
+          _cell('Email', _UsersTableState._wEmail, null),
+          _cell('Verified', _UsersTableState._wVerified, null),
+          _cell('Created', _UsersTableState._wCreated, _SortColumn.createdAt),
           _cell('Registrations', _UsersTableState._wEvents, null),
         ],
       ),
@@ -561,11 +570,13 @@ class _HeaderRow extends StatelessWidget {
                     Icon(
                       active
                           ? (sortAscending
-                              ? Icons.arrow_upward_rounded
-                              : Icons.arrow_downward_rounded)
+                                ? Icons.arrow_upward_rounded
+                                : Icons.arrow_downward_rounded)
                           : Icons.unfold_more_rounded,
                       size: 13,
-                      color: active ? cs.primary : cs.onSurfaceVariant.withValues(alpha: 0.5),
+                      color: active
+                          ? cs.primary
+                          : cs.onSurfaceVariant.withValues(alpha: 0.5),
                     ),
                   ],
                 ),
@@ -594,8 +605,19 @@ class _UserRowWidget extends StatelessWidget {
     if (dt == null) return '—';
     // e.g. "12 Jan 2024"
     const months = [
-      '', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+      '',
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return '${dt.day} ${months[dt.month]} ${dt.year}';
   }
@@ -615,9 +637,12 @@ class _UserRowWidget extends StatelessWidget {
             width: _UsersTableState._wIndex,
             child: Padding(
               padding: const EdgeInsets.only(left: 12, right: 8),
-              child: Text('$index',
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(color: cs.onSurfaceVariant)),
+              child: Text(
+                '$index',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: cs.onSurfaceVariant,
+                ),
+              ),
             ),
           ),
           // Name
@@ -625,10 +650,13 @@ class _UserRowWidget extends StatelessWidget {
             width: _UsersTableState._wName,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 8),
-              child: Text(row.name,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(fontWeight: FontWeight.w500),
-                  overflow: TextOverflow.ellipsis),
+              child: Text(
+                row.name,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
           // Email
@@ -636,10 +664,14 @@ class _UserRowWidget extends StatelessWidget {
             width: _UsersTableState._wEmail,
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 8),
-              child: Text(row.email,
-                  style: theme.textTheme.bodySmall
-                      ?.copyWith(fontFamily: 'monospace', fontSize: 12.5),
-                  overflow: TextOverflow.ellipsis),
+              child: Text(
+                row.email,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  fontFamily: 'monospace',
+                  fontSize: 12.5,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           ),
           // Email verified
@@ -670,9 +702,12 @@ class _UserRowWidget extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.only(left: 16, right: 16),
               child: row.registrations.isEmpty
-                  ? Text('No registrations',
-                      style: theme.textTheme.bodySmall
-                          ?.copyWith(color: cs.onSurfaceVariant))
+                  ? Text(
+                      'No registrations',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: cs.onSurfaceVariant,
+                      ),
+                    )
                   : Wrap(
                       spacing: 6,
                       runSpacing: 6,

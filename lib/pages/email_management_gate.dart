@@ -101,7 +101,7 @@ class _EmailManagementGateState extends State<EmailManagementGate>
             padding: const EdgeInsets.fromLTRB(32, 8, 32, 40),
             sliver: SliverList.separated(
               itemCount: _options.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final delay = index * 0.15;
                 final slideAnimation = Tween<Offset>(

@@ -39,7 +39,7 @@ class PostmarkService {
     required String token,
     required String to,
     required String subject,
-    required String textBody,
+    required String? textBody,
     String? htmlBody,
     List<PostmarkAttachment> attachments = const [],
   }) async {
@@ -48,8 +48,8 @@ class PostmarkService {
       'To': to,
       'ReplyTo': _replyTo,
       'Subject': subject,
-      'TextBody': textBody,
-      if (htmlBody != null) 'HtmlBody': htmlBody,
+      'TextBody': ?textBody,
+      'HtmlBody': ?htmlBody,
       'MessageStream': 'outbound',
       if (attachments.isNotEmpty)
         'Attachments': attachments.map((a) => a.toJson()).toList(),

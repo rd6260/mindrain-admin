@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:mindrain_admin/pages/brief_collected_emails_page.dart';
+import 'package:mindrain_admin/features/registrations/view/registrations_list_page.dart';
+import 'package:mindrain_admin/features/collected_emails/view/collected_emails_page.dart';
 import 'package:mindrain_admin/pages/referral_account_management_page.dart';
-import 'package:mindrain_admin/pages/registrations_list_page.dart';
-import 'package:mindrain_admin/pages/send_emails_page.dart';
+import 'package:mindrain_admin/features/send_emails/view/send_emails_page.dart';
 import 'package:mindrain_admin/pages/signed_up_users_page.dart';
 import 'package:mindrain_admin/pages/wallet_management_page.dart';
 
@@ -67,7 +67,7 @@ const List<NavItem> navItems = [
       NavSubItem(
         label: 'Brief Collected Emails',
         icon: Icons.inbox_rounded,
-        page: BriefCollectedEmailsPage(),
+        page: CollectedEmailsPage(),
       ),
       NavSubItem(
         label: 'Signed Up Users',
