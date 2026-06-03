@@ -8,6 +8,7 @@ import 'package:mindrain_admin/features/registrations/widgets/hover_icon_button.
 import 'package:mindrain_admin/features/registrations/widgets/info_dialog.dart';
 import 'package:mindrain_admin/features/registrations/widgets/paid_badge.dart';
 import 'package:mindrain_admin/features/registrations/widgets/stat_ship.dart';
+import 'package:mindrain_admin/features/registrations/widgets/edit_registration_dialog.dart';
 
 class RegistrationsPage extends StatelessWidget {
   const RegistrationsPage({super.key});
@@ -67,17 +68,7 @@ class _RegistrationsPageViewState extends State<_RegistrationsPageView> {
     return '${d.day} ${months[d.month - 1]} ${d.year}, $h:$m';
   }
 
-  String _fmtAmount(String amount, String currency) {
-    // amount is typically in paise (smallest unit) for INR
-    try {
-      final val = int.parse(amount);
-      final major = val / 100;
-      final symbol = currency.toUpperCase() == 'INR' ? '₹' : currency;
-      return '$symbol${major.toStringAsFixed(0)}';
-    } catch (_) {
-      return amount;
-    }
-  }
+
 
   String _initials(String name) {
     final parts = name.trim().split(' ');
@@ -116,26 +107,7 @@ class _RegistrationsPageViewState extends State<_RegistrationsPageView> {
     );
   }
 
-  void _showEventPopup(RegistrationEvent event) {
-    final all = context.read<RegistrationsBloc>().state.allRegistrations;
-    final total = all.where((r) => r.eventId == event.id).length;
-    final paid = all.where((r) => r.eventId == event.id && r.paid).length;
-    showDialog(
-      context: context,
-      barrierColor: Colors.black.withValues(alpha: 0.18),
-      builder: (_) => InfoDialog(
-        avatar: event.codeName.substring(0, event.codeName.length.clamp(0, 3)),
-        avatarBg: CustomTheme.infoLight,
-        avatarFg: CustomTheme.infoColor,
-        title: event.title,
-        subtitle: 'Code: ${event.codeName}',
-        rows: [
-          PopupRow('Registrations', '$total total ($paid paid)'),
-          PopupRow('Code Name', event.codeName),
-        ],
-      ),
-    );
-  }
+
 
   void _showMembersPopup(Registration reg) {
     showDialog(
@@ -599,6 +571,7 @@ class _RegistrationsPageViewState extends State<_RegistrationsPageView> {
               _col('Paid', 'paid', state),
               _col('Members', 'members', state, sortable: false),
               _col('Created At', 'created_at', state),
+              _col('Actions', 'actions', state, sortable: false),
             ],
             rows: state.filteredRegistrations.map(_buildRow).toList(),
           ),
@@ -877,6 +850,23 @@ class _RegistrationsPageViewState extends State<_RegistrationsPageView> {
               color: CustomTheme.textSecondary,
               fontFeatures: [FontFeature.tabularFigures()],
             ),
+          ),
+        ),
+
+        // ── Actions ────────────────────────────────────────────────────────
+        DataCell(
+          HoverIconButton(
+            icon: Icons.edit_outlined,
+            tooltip: 'Edit Registration',
+            onTap: () {
+              showDialog(
+                context: context,
+                builder: (_) => BlocProvider.value(
+                  value: context.read<RegistrationsBloc>(),
+                  child: EditRegistrationDialog(registration: r),
+                ),
+              );
+            },
           ),
         ),
       ],

@@ -33,3 +33,43 @@ class SortChanged extends RegistrationsEvent {
   final String sortKey;
   SortChanged(this.sortKey);
 }
+
+// ── Edit events ───────────────────────────────────────────────────────────────
+
+class UpdateRegistration extends RegistrationsEvent {
+  final String id;
+  final Map<String, dynamic> data;
+  UpdateRegistration(this.id, this.data);
+}
+
+class UpdatePayment extends RegistrationsEvent {
+  final String registrationId;
+  final String paymentId;
+  final Map<String, dynamic> data;
+  UpdatePayment(this.registrationId, this.paymentId, this.data);
+}
+
+class CreatePayment extends RegistrationsEvent {
+  final String registrationId;
+  final Map<String, dynamic> data;
+  CreatePayment(this.registrationId, this.data);
+}
+
+class UpdateMember extends RegistrationsEvent {
+  final String registrationId;
+  final String memberId;
+  final Map<String, dynamic> data;
+  UpdateMember(this.registrationId, this.memberId, this.data);
+}
+
+class CreateMember extends RegistrationsEvent {
+  final String registrationId;
+  final Map<String, dynamic> data;
+  CreateMember(this.registrationId, this.data);
+}
+
+class DeleteMember extends RegistrationsEvent {
+  final String registrationId;
+  final String memberId;
+  DeleteMember(this.registrationId, this.memberId);
+}

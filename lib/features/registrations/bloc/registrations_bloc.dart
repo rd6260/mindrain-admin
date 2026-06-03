@@ -18,6 +18,13 @@ class RegistrationsBloc extends Bloc<RegistrationsEvent, RegistrationsState> {
     on<TypeFilterChanged>(_onTypeFilterChanged);
     on<PaidFilterChanged>(_onPaidFilterChanged);
     on<SortChanged>(_onSortChanged);
+    // Edit handlers
+    on<UpdateRegistration>(_onUpdateRegistration);
+    on<UpdatePayment>(_onUpdatePayment);
+    on<CreatePayment>(_onCreatePayment);
+    on<UpdateMember>(_onUpdateMember);
+    on<CreateMember>(_onCreateMember);
+    on<DeleteMember>(_onDeleteMember);
   }
 
   Future<void> _onFetchRegistrations(
@@ -91,6 +98,278 @@ class RegistrationsBloc extends Bloc<RegistrationsEvent, RegistrationsState> {
     _applyFilters(emit);
   }
 
+  // ── Edit handlers ──────────────────────────────────────────────────────────
+
+  Future<void> _onUpdateRegistration(
+    UpdateRegistration event,
+    Emitter<RegistrationsState> emit,
+  ) async {
+    emit(state.copyWith(
+      savingIds: {...state.savingIds, event.id},
+      clearSaveError: true,
+    ));
+    try {
+      await _repository.updateRegistration(event.id, event.data);
+      final updated = state.allRegistrations.map((r) {
+        if (r.id != event.id) return r;
+        return Registration(
+          id: r.id,
+          registrationBy: event.data['registration_by'] as String? ?? r.registrationBy,
+          eventId: event.data['event_id'] as String? ?? r.eventId,
+          group: event.data['group'] as String? ?? r.group,
+          category: event.data['category'] as String? ?? r.category,
+          teamType: event.data['team_type'] as String? ?? r.teamType,
+          createdAt: r.createdAt,
+          country: event.data['country'] as String? ?? r.country,
+          paid: event.data['paid'] as bool? ?? r.paid,
+          teamId: event.data['team_id'] as String? ?? r.teamId,
+          referralUsed: event.data.containsKey('referral_used')
+              ? event.data['referral_used'] as String?
+              : r.referralUsed,
+          user: r.user,
+          event: r.event,
+          members: r.members,
+          payment: r.payment,
+        );
+      }).toList();
+      final newSaving = {...state.savingIds}..remove(event.id);
+      emit(state.copyWith(allRegistrations: updated, savingIds: newSaving));
+      _applyFilters(emit);
+    } catch (e) {
+      final newSaving = {...state.savingIds}..remove(event.id);
+      emit(state.copyWith(savingIds: newSaving, saveError: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdatePayment(
+    UpdatePayment event,
+    Emitter<RegistrationsState> emit,
+  ) async {
+    emit(state.copyWith(
+      savingIds: {...state.savingIds, event.registrationId},
+      clearSaveError: true,
+    ));
+    try {
+      await _repository.updatePayment(event.paymentId, event.data);
+      final updated = state.allRegistrations.map((r) {
+        if (r.id != event.registrationId || r.payment == null) return r;
+        final p = r.payment!;
+        final newPayment = RegistrationPayment(
+          paymentId: p.paymentId,
+          registrationId: p.registrationId,
+          amount: event.data['amount'] as String? ?? p.amount,
+          currency: event.data['currency'] as String? ?? p.currency,
+          status: event.data['status'] as String? ?? p.status,
+          method: event.data.containsKey('method')
+              ? event.data['method'] as String?
+              : p.method,
+        );
+        return Registration(
+          id: r.id,
+          registrationBy: r.registrationBy,
+          eventId: r.eventId,
+          group: r.group,
+          category: r.category,
+          teamType: r.teamType,
+          createdAt: r.createdAt,
+          country: r.country,
+          paid: r.paid,
+          teamId: r.teamId,
+          referralUsed: r.referralUsed,
+          user: r.user,
+          event: r.event,
+          members: r.members,
+          payment: newPayment,
+        );
+      }).toList();
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(allRegistrations: updated, savingIds: newSaving));
+      _applyFilters(emit);
+    } catch (e) {
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(savingIds: newSaving, saveError: e.toString()));
+    }
+  }
+
+  Future<void> _onCreatePayment(
+    CreatePayment event,
+    Emitter<RegistrationsState> emit,
+  ) async {
+    emit(state.copyWith(
+      savingIds: {...state.savingIds, event.registrationId},
+      clearSaveError: true,
+    ));
+    try {
+      final payment = await _repository.createPayment({
+        ...event.data,
+        'registration_id': event.registrationId,
+      });
+      final updated = state.allRegistrations.map((r) {
+        if (r.id != event.registrationId) return r;
+        return Registration(
+          id: r.id,
+          registrationBy: r.registrationBy,
+          eventId: r.eventId,
+          group: r.group,
+          category: r.category,
+          teamType: r.teamType,
+          createdAt: r.createdAt,
+          country: r.country,
+          paid: r.paid,
+          teamId: r.teamId,
+          referralUsed: r.referralUsed,
+          user: r.user,
+          event: r.event,
+          members: r.members,
+          payment: payment,
+        );
+      }).toList();
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(allRegistrations: updated, savingIds: newSaving));
+      _applyFilters(emit);
+    } catch (e) {
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(savingIds: newSaving, saveError: e.toString()));
+    }
+  }
+
+  Future<void> _onUpdateMember(
+    UpdateMember event,
+    Emitter<RegistrationsState> emit,
+  ) async {
+    emit(state.copyWith(
+      savingIds: {...state.savingIds, event.registrationId},
+      clearSaveError: true,
+    ));
+    try {
+      await _repository.updateMember(event.memberId, event.data);
+      final updated = state.allRegistrations.map((r) {
+        if (r.id != event.registrationId) return r;
+        final newMembers = r.members.map((m) {
+          if (m.id != event.memberId) return m;
+          return RegistrationMember(
+            id: m.id,
+            name: event.data['name'] as String? ?? m.name,
+            email: event.data['email'] as String? ?? m.email,
+            institute: event.data['institute'] as String? ?? m.institute,
+            academicYear: event.data['academic_year'] as int? ?? m.academicYear,
+            instituteId: event.data['institute_id'] as String? ?? m.instituteId,
+            phone: event.data.containsKey('phone')
+                ? event.data['phone'] as String?
+                : m.phone,
+            code: event.data.containsKey('code')
+                ? event.data['code'] as String?
+                : m.code,
+          );
+        }).toList();
+        return Registration(
+          id: r.id,
+          registrationBy: r.registrationBy,
+          eventId: r.eventId,
+          group: r.group,
+          category: r.category,
+          teamType: r.teamType,
+          createdAt: r.createdAt,
+          country: r.country,
+          paid: r.paid,
+          teamId: r.teamId,
+          referralUsed: r.referralUsed,
+          user: r.user,
+          event: r.event,
+          members: newMembers,
+          payment: r.payment,
+        );
+      }).toList();
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(allRegistrations: updated, savingIds: newSaving));
+      _applyFilters(emit);
+    } catch (e) {
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(savingIds: newSaving, saveError: e.toString()));
+    }
+  }
+
+  Future<void> _onCreateMember(
+    CreateMember event,
+    Emitter<RegistrationsState> emit,
+  ) async {
+    emit(state.copyWith(
+      savingIds: {...state.savingIds, event.registrationId},
+      clearSaveError: true,
+    ));
+    try {
+      final member = await _repository.createMember({
+        ...event.data,
+        'registration_id': event.registrationId,
+      });
+      final updated = state.allRegistrations.map((r) {
+        if (r.id != event.registrationId) return r;
+        return Registration(
+          id: r.id,
+          registrationBy: r.registrationBy,
+          eventId: r.eventId,
+          group: r.group,
+          category: r.category,
+          teamType: r.teamType,
+          createdAt: r.createdAt,
+          country: r.country,
+          paid: r.paid,
+          teamId: r.teamId,
+          referralUsed: r.referralUsed,
+          user: r.user,
+          event: r.event,
+          members: [...r.members, member],
+          payment: r.payment,
+        );
+      }).toList();
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(allRegistrations: updated, savingIds: newSaving));
+      _applyFilters(emit);
+    } catch (e) {
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(savingIds: newSaving, saveError: e.toString()));
+    }
+  }
+
+  Future<void> _onDeleteMember(
+    DeleteMember event,
+    Emitter<RegistrationsState> emit,
+  ) async {
+    emit(state.copyWith(
+      savingIds: {...state.savingIds, event.registrationId},
+      clearSaveError: true,
+    ));
+    try {
+      await _repository.deleteMember(event.memberId);
+      final updated = state.allRegistrations.map((r) {
+        if (r.id != event.registrationId) return r;
+        return Registration(
+          id: r.id,
+          registrationBy: r.registrationBy,
+          eventId: r.eventId,
+          group: r.group,
+          category: r.category,
+          teamType: r.teamType,
+          createdAt: r.createdAt,
+          country: r.country,
+          paid: r.paid,
+          teamId: r.teamId,
+          referralUsed: r.referralUsed,
+          user: r.user,
+          event: r.event,
+          members: r.members.where((m) => m.id != event.memberId).toList(),
+          payment: r.payment,
+        );
+      }).toList();
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(allRegistrations: updated, savingIds: newSaving));
+      _applyFilters(emit);
+    } catch (e) {
+      final newSaving = {...state.savingIds}..remove(event.registrationId);
+      emit(state.copyWith(savingIds: newSaving, saveError: e.toString()));
+    }
+  }
+
   void _applyFilters(Emitter<RegistrationsState> emit) {
     final q = state.searchQuery.toLowerCase();
     var list = state.allRegistrations.where((r) {
@@ -145,3 +424,5 @@ class RegistrationsBloc extends Bloc<RegistrationsEvent, RegistrationsState> {
     emit(state.copyWith(filteredRegistrations: list));
   }
 }
+
+

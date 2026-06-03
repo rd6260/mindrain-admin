@@ -66,4 +66,40 @@ class RegistrationsRepository {
 
     return registrations;
   }
+
+  Future<void> updateRegistration(String id, Map<String, dynamic> data) async {
+    await _supabase.from('registrations').update(data).eq('id', id);
+  }
+
+  Future<RegistrationPayment> createPayment(Map<String, dynamic> data) async {
+    final row = await _supabase
+        .from('payments')
+        .insert(data)
+        .select('payment_id, registration_id, amount, currency, status, method')
+        .single();
+    return RegistrationPayment.fromJson(row);
+  }
+
+  Future<void> updatePayment(String paymentId, Map<String, dynamic> data) async {
+    await _supabase.from('payments').update(data).eq('payment_id', paymentId);
+  }
+
+  Future<RegistrationMember> createMember(Map<String, dynamic> data) async {
+    final row = await _supabase
+        .from('members')
+        .insert(data)
+        .select(
+          'id, registration_id, name, email, institute, academic_year, institute_id, phone, code',
+        )
+        .single();
+    return RegistrationMember.fromJson(row);
+  }
+
+  Future<void> updateMember(String memberId, Map<String, dynamic> data) async {
+    await _supabase.from('members').update(data).eq('id', memberId);
+  }
+
+  Future<void> deleteMember(String memberId) async {
+    await _supabase.from('members').delete().eq('id', memberId);
+  }
 }

@@ -19,6 +19,10 @@ class RegistrationsState {
   final String sortKey;
   final bool sortAsc;
 
+  // Edit state
+  final Set<String> savingIds;
+  final String? saveError;
+
   const RegistrationsState({
     this.status = RegistrationsStatus.initial,
     this.allRegistrations = const [],
@@ -31,6 +35,8 @@ class RegistrationsState {
     this.paidFilter = '',
     this.sortKey = 'created_at',
     this.sortAsc = false,
+    this.savingIds = const {},
+    this.saveError,
   });
 
   RegistrationsState copyWith({
@@ -45,6 +51,9 @@ class RegistrationsState {
     String? paidFilter,
     String? sortKey,
     bool? sortAsc,
+    Set<String>? savingIds,
+    String? saveError,
+    bool clearSaveError = false,
   }) {
     return RegistrationsState(
       status: status ?? this.status,
@@ -58,6 +67,8 @@ class RegistrationsState {
       paidFilter: paidFilter ?? this.paidFilter,
       sortKey: sortKey ?? this.sortKey,
       sortAsc: sortAsc ?? this.sortAsc,
+      savingIds: savingIds ?? this.savingIds,
+      saveError: clearSaveError ? null : (saveError ?? this.saveError),
     );
   }
 }
