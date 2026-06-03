@@ -1,195 +1,48 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mindrain_admin/core/theme.dart';
+import 'package:mindrain_admin/features/registrations/bloc/registrations_bloc.dart';
 import 'package:mindrain_admin/features/registrations/data/model.dart';
 import 'package:mindrain_admin/features/registrations/widgets/filter_dropdown.dart';
 import 'package:mindrain_admin/features/registrations/widgets/hover_icon_button.dart';
 import 'package:mindrain_admin/features/registrations/widgets/info_dialog.dart';
 import 'package:mindrain_admin/features/registrations/widgets/paid_badge.dart';
 import 'package:mindrain_admin/features/registrations/widgets/stat_ship.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
-final _supabase = Supabase.instance.client;
-
-class RegistrationsPage extends StatefulWidget {
+class RegistrationsPage extends StatelessWidget {
   const RegistrationsPage({super.key});
 
   @override
-  State<RegistrationsPage> createState() => _RegistrationsPageState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => RegistrationsBloc()..add(FetchRegistrations()),
+      child: const _RegistrationsPageView(),
+    );
+  }
 }
 
-class _RegistrationsPageState extends State<RegistrationsPage> {
-  List<Registration> _all = [];
-  List<Registration> _filtered = [];
-  bool _loading = true;
-  String? _error;
+class _RegistrationsPageView extends StatefulWidget {
+  const _RegistrationsPageView();
 
-  // Filters
+  @override
+  State<_RegistrationsPageView> createState() => _RegistrationsPageViewState();
+}
+
+class _RegistrationsPageViewState extends State<_RegistrationsPageView> {
   final _searchController = TextEditingController();
-  String _eventFilter = '';
-  String _groupFilter = '';
-  String _typeFilter = '';
-  String _paidFilter = '';
-
-  // Sort
-  String _sortKey = 'created_at';
-  bool _sortAsc = false;
 
   @override
   void initState() {
     super.initState();
-    _fetchData();
-    _searchController.addListener(_applyFilters);
+    _searchController.addListener(() {
+      context.read<RegistrationsBloc>().add(SearchQueryChanged(_searchController.text));
+    });
   }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  // ── Data ───────────────────────────────────────────────────────────────────
-
-  Future<void> _fetchData() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      final results = await Future.wait([
-        _supabase
-            .from('registrations')
-            .select()
-            .order('created_at', ascending: false),
-        _supabase.from('events').select('id, title, code_name'),
-        _supabase
-            .from('user_info')
-            .select('id, name, role, institute, academic_year, academic_level'),
-        _supabase
-            .from('members')
-            .select(
-              'id, registration_id, name, email, institute, academic_year, institute_id, phone, code',
-            ),
-        _supabase
-            .from('payments')
-            .select(
-              'payment_id, registration_id, amount, currency, status, method',
-            )
-            .eq('status', 'paid'),
-      ]);
-
-      final eventMap = <String, RegistrationEvent>{
-        for (final e in results[1] as List)
-          (e as Map<String, dynamic>)['id'] as String:
-              RegistrationEvent.fromJson(e),
-      };
-
-      final userMap = <String, RegistrationUser>{
-        for (final u in results[2] as List)
-          (u as Map<String, dynamic>)['id'] as String:
-              RegistrationUser.fromJson(u),
-      };
-
-      final membersByReg = <String, List<RegistrationMember>>{};
-      for (final m in results[3] as List) {
-        final row = m as Map<String, dynamic>;
-        final regId = row['registration_id'] as String;
-        membersByReg.putIfAbsent(regId, () => []);
-        membersByReg[regId]!.add(RegistrationMember.fromJson(row));
-      }
-
-      // Latest captured payment per registration
-      final paymentMap = <String, RegistrationPayment>{};
-      for (final p in results[4] as List) {
-        final row = p as Map<String, dynamic>;
-        final regId = row['registration_id'] as String;
-        // keep first found (already filtered to captured)
-        paymentMap.putIfAbsent(regId, () => RegistrationPayment.fromJson(row));
-      }
-
-      final registrations = (results[0] as List).map((e) {
-        final reg = Registration.fromJson(e as Map<String, dynamic>);
-        reg.user = userMap[reg.registrationBy];
-        reg.event = eventMap[reg.eventId];
-        reg.members = membersByReg[reg.id] ?? [];
-        reg.payment = paymentMap[reg.id];
-        return reg;
-      }).toList();
-
-      setState(() {
-        _all = registrations;
-        _applyFilters();
-        _loading = false;
-      });
-    } on PostgrestException catch (e) {
-      setState(() {
-        _error = e.message;
-        _loading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _error = e.toString();
-        _loading = false;
-      });
-    }
-  }
-
-  void _applyFilters() {
-    final q = _searchController.text.toLowerCase();
-    var list = _all.where((r) {
-      if (q.isNotEmpty) {
-        final nameMatch = r.user?.name.toLowerCase().contains(q) ?? false;
-        final teamMatch = r.teamId.toLowerCase().contains(q);
-        final eventMatch = r.event?.title.toLowerCase().contains(q) ?? false;
-        final memberMatch = r.members.any(
-          (m) => m.name.toLowerCase().contains(q),
-        );
-        if (!nameMatch && !teamMatch && !eventMatch && !memberMatch) {
-          return false;
-        }
-      }
-      if (_eventFilter.isNotEmpty && r.eventId != _eventFilter) return false;
-      if (_groupFilter.isNotEmpty && r.group != _groupFilter) return false;
-      if (_typeFilter.isNotEmpty && r.teamType != _typeFilter) return false;
-      if (_paidFilter == 'paid' && !r.paid) return false;
-      if (_paidFilter == 'unpaid' && r.paid) return false;
-      return true;
-    }).toList();
-
-    list.sort((a, b) {
-      dynamic va, vb;
-      switch (_sortKey) {
-        case 'name':
-          va = a.user?.name ?? '';
-          vb = b.user?.name ?? '';
-        case 'paid':
-          va = a.paid ? 1 : 0;
-          vb = b.paid ? 1 : 0;
-        default:
-          va = _sortKey == 'created_at'
-              ? a.createdAt.millisecondsSinceEpoch
-              : '';
-          vb = _sortKey == 'created_at'
-              ? b.createdAt.millisecondsSinceEpoch
-              : '';
-      }
-      final cmp = Comparable.compare(va as Comparable, vb as Comparable);
-      return _sortAsc ? cmp : -cmp;
-    });
-
-    setState(() => _filtered = list);
-  }
-
-  void _setSort(String key) {
-    setState(() {
-      if (_sortKey == key) {
-        _sortAsc = !_sortAsc;
-      } else {
-        _sortKey = key;
-        _sortAsc = false;
-      }
-    });
-    _applyFilters();
   }
 
   // ── Helpers ────────────────────────────────────────────────────────────────
@@ -232,9 +85,9 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
     return name.substring(0, name.length.clamp(0, 2)).toUpperCase();
   }
 
-  List<RegistrationEvent> get _uniqueEvents {
+  List<RegistrationEvent> _getUniqueEvents(List<Registration> all) {
     final seen = <String>{};
-    return _all
+    return all
         .where((r) => r.event != null && seen.add(r.event!.id))
         .map((r) => r.event!)
         .toList();
@@ -264,8 +117,9 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
   }
 
   void _showEventPopup(RegistrationEvent event) {
-    final total = _all.where((r) => r.eventId == event.id).length;
-    final paid = _all.where((r) => r.eventId == event.id && r.paid).length;
+    final all = context.read<RegistrationsBloc>().state.allRegistrations;
+    final total = all.where((r) => r.eventId == event.id).length;
+    final paid = all.where((r) => r.eventId == event.id && r.paid).length;
     showDialog(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.18),
@@ -427,22 +281,26 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: CustomTheme.bg,
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _buildHeader(),
-          _buildFilterBar(),
-          if (_error != null) _buildErrorBanner(),
-          Expanded(child: _buildBody()),
-        ],
-      ),
+    return BlocBuilder<RegistrationsBloc, RegistrationsState>(
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: CustomTheme.bg,
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildHeader(state),
+              _buildFilterBar(state),
+              if (state.error != null) _buildErrorBanner(state),
+              Expanded(child: _buildBody(state)),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildBody() {
-    if (_loading) {
+  Widget _buildBody(RegistrationsState state) {
+    if (state.status == RegistrationsStatus.loading || state.status == RegistrationsStatus.initial) {
       return const Center(
         child: CircularProgressIndicator(
           color: Color(0xFF1A1A1A),
@@ -450,7 +308,7 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
         ),
       );
     }
-    if (_filtered.isEmpty) {
+    if (state.filteredRegistrations.isEmpty) {
       return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -469,10 +327,10 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
         ),
       );
     }
-    return _buildTable();
+    return _buildTable(state);
   }
 
-  Widget _buildErrorBanner() {
+  Widget _buildErrorBanner(RegistrationsState state) {
     return Container(
       width: double.infinity,
       color: CustomTheme.errorLight,
@@ -487,7 +345,7 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _error!,
+              state.error!,
               style: const TextStyle(
                 fontSize: 12,
                 color: CustomTheme.errorColor,
@@ -495,7 +353,7 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
             ),
           ),
           TextButton(
-            onPressed: _fetchData,
+            onPressed: () => context.read<RegistrationsBloc>().add(FetchRegistrations()),
             child: const Text(
               'Retry',
               style: TextStyle(
@@ -512,9 +370,9 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
 
   // ── Header ─────────────────────────────────────────────────────────────────
 
-  Widget _buildHeader() {
-    final paid = _filtered.where((r) => r.paid).length;
-    final unpaid = _filtered.where((r) => !r.paid).length;
+  Widget _buildHeader(RegistrationsState state) {
+    final paid = state.filteredRegistrations.where((r) => r.paid).length;
+    final unpaid = state.filteredRegistrations.where((r) => !r.paid).length;
     return Container(
       color: CustomTheme.surface,
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
@@ -534,9 +392,9 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
               ),
               const SizedBox(height: 2),
               Text(
-                _loading
+                state.status == RegistrationsStatus.loading || state.status == RegistrationsStatus.initial
                     ? 'Loading…'
-                    : '${_filtered.length} registration${_filtered.length != 1 ? 's' : ''}',
+                    : '${state.filteredRegistrations.length} registration${state.filteredRegistrations.length != 1 ? 's' : ''}',
                 style: const TextStyle(
                   fontSize: 13,
                   color: CustomTheme.textSecondary,
@@ -545,8 +403,8 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
             ],
           ),
           const Spacer(),
-          if (!_loading) ...[
-            StatChip(label: 'Total', value: '${_filtered.length}'),
+          if (state.status != RegistrationsStatus.loading && state.status != RegistrationsStatus.initial) ...[
+            StatChip(label: 'Total', value: '${state.filteredRegistrations.length}'),
             const SizedBox(width: 12),
             StatChip(
               label: 'Paid',
@@ -565,7 +423,7 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
           ],
           HoverIconButton(
             icon: Icons.refresh_rounded,
-            onTap: _fetchData,
+            onTap: () => context.read<RegistrationsBloc>().add(FetchRegistrations()),
             tooltip: 'Refresh',
           ),
         ],
@@ -575,7 +433,7 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
 
   // ── Filter Bar ─────────────────────────────────────────────────────────────
 
-  Widget _buildFilterBar() {
+  Widget _buildFilterBar(RegistrationsState state) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 10),
       decoration: const BoxDecoration(
@@ -628,22 +486,21 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
           const SizedBox(width: 10),
           // Event filter
           FilterDropdown(
-            value: _eventFilter,
+            value: state.eventFilter,
             hint: 'All Events',
             items: [
               const DropdownMenuItem(value: '', child: Text('All Events')),
-              ..._uniqueEvents.map(
+              ..._getUniqueEvents(state.allRegistrations).map(
                 (e) => DropdownMenuItem(value: e.id, child: Text(e.title)),
               ),
             ],
             onChanged: (v) {
-              setState(() => _eventFilter = v ?? '');
-              _applyFilters();
+              context.read<RegistrationsBloc>().add(EventFilterChanged(v ?? ''));
             },
           ),
           const SizedBox(width: 10),
           FilterDropdown(
-            value: _groupFilter,
+            value: state.groupFilter,
             hint: 'All Groups',
             items: const [
               DropdownMenuItem(value: '', child: Text('All Groups')),
@@ -651,13 +508,12 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
               DropdownMenuItem(value: 'B', child: Text('Group B')),
             ],
             onChanged: (v) {
-              setState(() => _groupFilter = v ?? '');
-              _applyFilters();
+              context.read<RegistrationsBloc>().add(GroupFilterChanged(v ?? ''));
             },
           ),
           const SizedBox(width: 10),
           FilterDropdown(
-            value: _typeFilter,
+            value: state.typeFilter,
             hint: 'All Types',
             items: const [
               DropdownMenuItem(value: '', child: Text('All Types')),
@@ -665,44 +521,40 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
               DropdownMenuItem(value: 'group', child: Text('Group')),
             ],
             onChanged: (v) {
-              setState(() => _typeFilter = v ?? '');
-              _applyFilters();
+              context.read<RegistrationsBloc>().add(TypeFilterChanged(v ?? ''));
             },
           ),
           const SizedBox(width: 14),
           // Paid filter badges
           PaidBadge(
             label: 'All',
-            active: _paidFilter == '',
+            active: state.paidFilter == '',
             color: CustomTheme.textPrimary,
             bgActive: CustomTheme.textPrimary,
             onTap: () {
-              setState(() => _paidFilter = '');
-              _applyFilters();
+              context.read<RegistrationsBloc>().add(PaidFilterChanged(''));
             },
           ),
           const SizedBox(width: 6),
           PaidBadge(
             label: 'Paid',
-            active: _paidFilter == 'paid',
+            active: state.paidFilter == 'paid',
             color: CustomTheme.positive,
             bgActive: CustomTheme.positive,
             bgInactive: CustomTheme.positiveLight,
             onTap: () {
-              setState(() => _paidFilter = 'paid');
-              _applyFilters();
+              context.read<RegistrationsBloc>().add(PaidFilterChanged('paid'));
             },
           ),
           const SizedBox(width: 6),
           PaidBadge(
             label: 'Unpaid',
-            active: _paidFilter == 'unpaid',
+            active: state.paidFilter == 'unpaid',
             color: CustomTheme.errorColor,
             bgActive: CustomTheme.errorColor,
             bgInactive: CustomTheme.errorLight,
             onTap: () {
-              setState(() => _paidFilter = 'unpaid');
-              _applyFilters();
+              context.read<RegistrationsBloc>().add(PaidFilterChanged('unpaid'));
             },
           ),
         ],
@@ -712,7 +564,7 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
 
   // ── Table ──────────────────────────────────────────────────────────────────
 
-  Widget _buildTable() {
+  Widget _buildTable(RegistrationsState state) {
     return SingleChildScrollView(
       scrollDirection: Axis.vertical,
       child: SingleChildScrollView(
@@ -741,14 +593,14 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
               bottom: const BorderSide(color: CustomTheme.border),
             ),
             columns: [
-              _col('Registered By', 'name'),
-              _col('Team ID', 'team_id', sortable: false),
-              _col('Group / Cat / Type', 'group', sortable: false),
-              _col('Paid', 'paid'),
-              _col('Members', 'members', sortable: false),
-              _col('Created At', 'created_at'),
+              _col('Registered By', 'name', state),
+              _col('Team ID', 'team_id', state, sortable: false),
+              _col('Group / Cat / Type', 'group', state, sortable: false),
+              _col('Paid', 'paid', state),
+              _col('Members', 'members', state, sortable: false),
+              _col('Created At', 'created_at', state),
             ],
-            rows: _filtered.map(_buildRow).toList(),
+            rows: state.filteredRegistrations.map(_buildRow).toList(),
           ),
         ),
       ),
@@ -757,7 +609,8 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
 
   DataColumn _col(
     String label,
-    String key, {
+    String key,
+    RegistrationsState state, {
     bool numeric = false,
     bool sortable = true,
   }) {
@@ -772,7 +625,7 @@ class _RegistrationsPageState extends State<RegistrationsPage> {
         ),
       ),
       numeric: numeric,
-      onSort: sortable ? (_, _) => _setSort(key) : null,
+      onSort: sortable ? (_, _) => context.read<RegistrationsBloc>().add(SortChanged(key)) : null,
     );
   }
 
