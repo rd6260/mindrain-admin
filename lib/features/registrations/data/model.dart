@@ -98,6 +98,12 @@ class RegistrationPayment {
   final String currency;
   final String status;
   final String? method;
+  final String mindrainFee;
+  final String? razorpayFee;
+  final String? tax;
+  final String? razorpayOrderId;
+  final String? razorpayPaymentId;
+  final String? razorpaySignature;
 
   RegistrationPayment({
     required this.paymentId,
@@ -106,6 +112,12 @@ class RegistrationPayment {
     required this.currency,
     required this.status,
     this.method,
+    required this.mindrainFee,
+    this.razorpayFee,
+    this.tax,
+    this.razorpayOrderId,
+    this.razorpayPaymentId,
+    this.razorpaySignature,
   });
 
   factory RegistrationPayment.fromJson(Map<String, dynamic> json) =>
@@ -116,6 +128,12 @@ class RegistrationPayment {
         currency: json['currency'] as String,
         status: json['status'] as String,
         method: json['method'] as String?,
+        mindrainFee: json['mindrain_fee'] as String? ?? '0',
+        razorpayFee: json['razorpay_fee'] as String?,
+        tax: json['tax'] as String?,
+        razorpayOrderId: json['razorpay_order_id'] as String?,
+        razorpayPaymentId: json['razorpay_payment_id'] as String?,
+        razorpaySignature: json['razorpay_signature'] as String?,
       );
 }
 

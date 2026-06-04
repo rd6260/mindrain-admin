@@ -163,6 +163,22 @@ class RegistrationsBloc extends Bloc<RegistrationsEvent, RegistrationsState> {
           method: event.data.containsKey('method')
               ? event.data['method'] as String?
               : p.method,
+          mindrainFee: event.data['mindrain_fee'] as String? ?? p.mindrainFee,
+          razorpayFee: event.data.containsKey('razorpay_fee')
+              ? event.data['razorpay_fee'] as String?
+              : p.razorpayFee,
+          tax: event.data.containsKey('tax')
+              ? event.data['tax'] as String?
+              : p.tax,
+          razorpayOrderId: event.data.containsKey('razorpay_order_id')
+              ? event.data['razorpay_order_id'] as String?
+              : p.razorpayOrderId,
+          razorpayPaymentId: event.data.containsKey('razorpay_payment_id')
+              ? event.data['razorpay_payment_id'] as String?
+              : p.razorpayPaymentId,
+          razorpaySignature: event.data.containsKey('razorpay_signature')
+              ? event.data['razorpay_signature'] as String?
+              : p.razorpaySignature,
         );
         return Registration(
           id: r.id,

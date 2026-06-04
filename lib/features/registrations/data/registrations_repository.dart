@@ -23,7 +23,7 @@ class RegistrationsRepository {
       _supabase
           .from('payments')
           .select(
-            'payment_id, registration_id, amount, currency, status, method',
+            'payment_id, registration_id, amount, currency, status, method, mindrain_fee, razorpay_fee, tax, razorpay_order_id, razorpay_payment_id, razorpay_signature',
           )
           .eq('status', 'paid'),
     ]);
@@ -75,7 +75,7 @@ class RegistrationsRepository {
     final row = await _supabase
         .from('payments')
         .insert(data)
-        .select('payment_id, registration_id, amount, currency, status, method')
+        .select('payment_id, registration_id, amount, currency, status, method, mindrain_fee, razorpay_fee, tax, razorpay_order_id, razorpay_payment_id, razorpay_signature')
         .single();
     return RegistrationPayment.fromJson(row);
   }

@@ -35,7 +35,11 @@ class _EditRegistrationDialogState extends State<EditRegistrationDialog> with Si
   late TextEditingController _payCurrencyController;
   late String _payStatus;
   late TextEditingController _payMethodController;
-  late TextEditingController _payOrderIdController;
+  late TextEditingController _payMindrainFeeController;
+  late TextEditingController _payRazorpayFeeController;
+  late TextEditingController _payTaxController;
+  late TextEditingController _payRazorpayOrderIdController;
+  late TextEditingController _payRazorpayPaymentIdController;
   late TextEditingController _payPaymentIdController;
 
   @override
@@ -60,7 +64,11 @@ class _EditRegistrationDialogState extends State<EditRegistrationDialog> with Si
     _payCurrencyController = TextEditingController(text: p?.currency ?? 'INR');
     _payStatus = p?.status ?? 'paid';
     _payMethodController = TextEditingController(text: p?.method ?? '');
-    _payOrderIdController = TextEditingController(text: ''); // Not in model but usually part of payment
+    _payMindrainFeeController = TextEditingController(text: p?.mindrainFee ?? '0');
+    _payRazorpayFeeController = TextEditingController(text: p?.razorpayFee ?? '');
+    _payTaxController = TextEditingController(text: p?.tax ?? '');
+    _payRazorpayOrderIdController = TextEditingController(text: p?.razorpayOrderId ?? '');
+    _payRazorpayPaymentIdController = TextEditingController(text: p?.razorpayPaymentId ?? '');
     _payPaymentIdController = TextEditingController(text: p?.paymentId ?? '');
   }
 
@@ -74,7 +82,11 @@ class _EditRegistrationDialogState extends State<EditRegistrationDialog> with Si
     _payAmountController.dispose();
     _payCurrencyController.dispose();
     _payMethodController.dispose();
-    _payOrderIdController.dispose();
+    _payMindrainFeeController.dispose();
+    _payRazorpayFeeController.dispose();
+    _payTaxController.dispose();
+    _payRazorpayOrderIdController.dispose();
+    _payRazorpayPaymentIdController.dispose();
     _payPaymentIdController.dispose();
     super.dispose();
   }
@@ -100,12 +112,29 @@ class _EditRegistrationDialogState extends State<EditRegistrationDialog> with Si
 
   void _savePayment() {
     if (_payFormKey.currentState!.validate()) {
-      final data = {
+      final Map<String, dynamic> data = {
         'amount': _payAmountController.text.trim(),
         'currency': _payCurrencyController.text.trim(),
         'status': _payStatus,
         'method': _payMethodController.text.trim(),
+        'mindrain_fee': _payMindrainFeeController.text.trim(),
       };
+
+      final rFee = _payRazorpayFeeController.text.trim();
+      if (rFee.isNotEmpty) data['razorpay_fee'] = rFee;
+      else data['razorpay_fee'] = null;
+      
+      final tax = _payTaxController.text.trim();
+      if (tax.isNotEmpty) data['tax'] = tax;
+      else data['tax'] = null;
+
+      final roId = _payRazorpayOrderIdController.text.trim();
+      if (roId.isNotEmpty) data['razorpay_order_id'] = roId;
+      else data['razorpay_order_id'] = null;
+
+      final rpId = _payRazorpayPaymentIdController.text.trim();
+      if (rpId.isNotEmpty) data['razorpay_payment_id'] = rpId;
+      else data['razorpay_payment_id'] = null;
 
       if (widget.registration.payment == null) {
         context.read<RegistrationsBloc>().add(CreatePayment(widget.registration.id, data));
@@ -360,6 +389,24 @@ class _EditRegistrationDialogState extends State<EditRegistrationDialog> with Si
                     Expanded(child: _buildDropdown('Status', _payStatus, ['paid', 'unpaid', 'created', 'failed'], (v) => setState(() => _payStatus = v!))),
                     const SizedBox(width: 16),
                     Expanded(child: _buildTextField('Method (e.g. upi, card)', _payMethodController)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: _buildTextField('Mindrain Fee', _payMindrainFeeController, required: true)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildTextField('Razorpay Fee', _payRazorpayFeeController)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildTextField('Tax', _payTaxController)),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: _buildTextField('Razorpay Order ID', _payRazorpayOrderIdController)),
+                    const SizedBox(width: 16),
+                    Expanded(child: _buildTextField('Razorpay Payment ID', _payRazorpayPaymentIdController)),
                   ],
                 ),
                 if (reg.payment != null) ...[
